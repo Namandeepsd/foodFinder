@@ -1,0 +1,63 @@
+<%- include('partials/header') %>
+
+<!-- Page Header -->
+<div style="margin-bottom:32px">
+  <h1>Explore Restaurants</h1>
+  <p class="muted" style="font-size:16px">Discover, rate, and book your next dining experience</p>
+</div>
+
+<!-- Search Section -->
+<div class="box" style="margin-bottom:24px">
+  <form class="filter" action="/restaurants/find" method="get">
+    <input name="q" placeholder="Search by name, cuisine, or address..." value="<%= q %>"/>
+    <button>Search</button>
+  </form>
+</div>
+
+<!-- Restaurants Grid -->
+<% if (restaurants.length === 0) { %>
+  <div class="box">
+    <div class="empty-state">
+      <p>No restaurants found.</p>
+      <p class="muted">Try a different search or <a href="/restaurants/new" style="color:var(--accent)">create a new restaurant</a>.</p>
+    </div>
+  </div>
+<% } else { %>
+  <div class="cards">
+    <% restaurants.forEach(r => { %>
+      <div class="card">
+        <img src="<%= r.image || '/images/placeholder.png' %>" alt="<%= r.name %>" />
+        <div class="card-content">
+          <h4><a href="/restaurants/<%= r._id %>"><%= r.name %></a></h4>
+          <p class="muted"><%= r.cuisine %></p>
+          <% if(r.address) { %>
+            <p class="muted" style="font-size:12px">📍 <%= r.address.substring(0, 40) %><% if(r.address.length > 40) { %>...<% } %></p>
+          <% } %>
+          <p class="rating">⭐ <%= typeof r.avgRating !== 'undefined' && r.avgRating ? r.avgRating : 'No ratings' %></p>
+          <div class="actions" style="margin-top:auto">
+            <button type="button" class="review-toggle-btn small" data-id="<%= r._id %>" style="flex:1">Review</button>
+            <a href="/restaurants/<%= r._id %>" style="flex:1;text-align:center">Details</a>
+          </div>
+        </div>
+        
+        <!-- Review Form -->
+        <form id="review-form-<%= r._id %>" class="hidden book-form" method="post" action="/restaurants/<%= r._id %>/rate">
+          <label>Your Name (optional)</label>
+          <input name="username" placeholder="Anonymous" />
+          <label>Rating</label>
+          <select name="score" required>
+            <% for(let i=5;i>=1;i--){ %>
+              <option value="<%=i%>">⭐ <%= i %> Star<% if(i !== 1) { %>s<% } %></option>
+            <% } %>
+          </select>
+          <label>Comment</label>
+          <textarea name="comment" placeholder="Share your experience..."></textarea>
+          <button type="submit" style="margin-top:8px">Submit Review</button>
+        </form>
+      </div>
+    <% }) %>
+  </div>
+<% } %>
+
+<script src="/js/dashboard.js"></script>
+<%- include('partials/footer') %>

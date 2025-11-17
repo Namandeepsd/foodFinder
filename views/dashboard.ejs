@@ -1,0 +1,310 @@
+<%- include('partials/header') %>
+
+<!-- Dashboard Hero Section -->
+<div style="margin-bottom:32px">
+  <h1>Dashboard</h1>
+  <p class="muted" style="font-size:16px">Manage your reservations, visits, and explore restaurants</p>
+</div>
+
+<!-- Quick Book Section -->
+<div class="box">
+  <h3 style="margin-bottom:16px">📅 Make a Reservation</h3>
+  
+  <div style="display:grid;grid-template-columns:350px 1fr;gap:24px;align-items:start">
+    <!-- Left: Form -->
+    <form action="/reservations" method="post">
+      <div>
+        <label>Restaurant</label>
+        <select name="restaurantId" id="restaurantSelect" required>
+          <option value="">Select a restaurant...</option>
+          <% restaurants.forEach(rr => { %>
+            <option value="<%= rr._id %>"><%= rr.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label>Your Name</label>
+        <input name="name" placeholder="John Doe" required />
+      </div>
+      <div>
+        <label>Phone</label>
+        <input name="phone" placeholder="(555) 123-4567" />
+      </div>
+      <div>
+        <label>Date &amp; Time</label>
+        <input type="datetime-local" name="dateTime" required value="<%= new Date(Date.now() + 3600000).toISOString().slice(0,16) %>" />
+      </div>
+      <div>
+        <label>Guests</label>
+        <input type="number" name="guests" min="1" value="2" />
+      </div>
+      <button type="submit">Book Now</button>
+    </form>
+
+    <!-- Right: Restaurant Image Grid -->
+    <div>
+      <p class="muted" style="font-size:14px;margin-bottom:12px">Browse restaurants</p>
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:10px">
+        <% restaurants.forEach(rr => { %>
+          <div class="restaurant-img-card" onclick="document.getElementById('restaurantSelect').value='<%= rr._id %>';this.parentElement.querySelectorAll('.restaurant-img-card').forEach(el => el.style.borderColor='#e5e7eb');this.style.borderColor='#ff6b6b'" style="cursor:pointer;position:relative;overflow:hidden;border-radius:8px;border:3px solid #e5e7eb;transition:border-color 0.2s;aspect-ratio:1">
+            <img src="<%= rr.image %>" alt="<%= rr.name %>" style="width:100%;height:100%;object-fit:cover" />
+            <div style="position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(0,0,0,0.8),transparent);color:white;padding:6px;font-size:11px;font-weight:500;text-align:center"><%= rr.name %></div>
+          </div>
+        <% }) %>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Upcoming Reservations -->
+<div class="box">
+  <div class="section-header">
+    <h3>🗓️ Upcoming Reservations</h3>
+  </div>
+  <% if(upcoming.length === 0) { %>
+    <div class="empty-state">
+      <p>No upcoming reservations.</p>
+      <p class="muted">Make a reservation above to get started!</p>
+    </div>
+  <% } else { %>
+    <ul class="list">
+      <% upcoming.forEach(r => { %>
+        <li>
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:16px">
+            <div style="flex:1">
+              <strong><a href="/restaurants/<%= r.restaurant._id %>" style="color:var(--accent)"><%= r.restaurant.name %></a></strong>
+              <div class="muted" style="margin-top:4px">
+                📍 <%= r.restaurant.address || 'Address not set' %>
+              </div>
+              <div class="muted" style="margin-top:4px">
+                🕐 <%= new Date(r.dateTime).toLocaleDateString() %> at <%= new Date(r.dateTime).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}) %>
+              </div>
+              <div class="muted" style="margin-top:4px">
+                👥 <%= r.guests %> <% if(r.guests === 1) { %>guest<% } else { %>guests<% } %>
+              </div>
+            </div>
+            <div class="actions" style="flex-shrink:0">
+              <form method="post" action="/reservations/<%= r._id %>/visit">
+                <button>✓ Visited</button>
+              </form>
+              <form method="post" action="/reservations/<%= r._id %>/cancel">
+                <button style="background:#dc2626">✕ Cancel</button>
+              </form>
+            </div>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
+
+<!-- Visited Restaurants Map & Recent Visits -->
+<div class="box">
+  <div class="section-header">
+    <h3>🗺️ Your Visited Restaurants</h3>
+    <button id="add-visit-btn" class="small">+ Add Visit</button>
+  </div>
+  
+  <!-- Leaflet Map -->
+  <div id="map" style="height:350px;border-radius:12px;margin-bottom:20px;border:1px solid var(--border)"></div>
+
+  <!-- Add Visit Form (Hidden by default) -->
+  <form id="add-visit-form" class="hidden box" method="post" action="/visits" style="margin:20px 0;background:var(--bg);">
+    <h4 style="margin-bottom:16px">Log a Restaurant Visit</h4>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label>Restaurant</label>
+        <select name="restaurantId" required>
+          <option value="">Select a restaurant...</option>
+          <% restaurants.forEach(rr => { %>
+            <option value="<%= rr._id %>"><%= rr.name %></option>
+          <% }) %>
+        </select>
+      </div>
+      <div>
+        <label>Visit Date</label>
+        <input type="datetime-local" name="visitedAt" value="<%= new Date().toISOString().slice(0,16) %>" />
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div>
+        <label>Rating (optional)</label>
+        <select name="rating">
+          <option value="">No rating</option>
+          <% for(let i = 5; i>=1; i--) { %>
+            <option value="<%= i %>">⭐ <%= i %> Star<% if(i !== 1) { %>s<% } %></option>
+          <% } %>
+        </select>
+      </div>
+      <div>
+        <label>Your Name (optional)</label>
+        <input name="username" placeholder="Anonymous" />
+      </div>
+    </div>
+    <div>
+      <label>Comment (optional)</label>
+      <textarea name="comment" placeholder="How was your visit?"></textarea>
+    </div>
+    <div style="display:flex;gap:12px">
+      <button type="submit">Save Visit</button>
+      <button type="button" style="background:#6b7280" onclick="document.getElementById('add-visit-form').classList.add('hidden')">Cancel</button>
+    </div>
+  </form>
+
+  <!-- Recent Visits List -->
+  <% if(recentVisits.length === 0) { %>
+    <div class="empty-state">
+      <p>No visits recorded yet.</p>
+      <p class="muted">Log a visit to see your restaurant history and map!</p>
+    </div>
+  <% } else { %>
+    <h4 style="margin:20px 0 12px 0">Recent Visits</h4>
+    <ul class="list">
+      <% recentVisits.forEach(visit => { %>
+        <li>
+          <div style="display:flex;justify-content:space-between;align-items:start;gap:16px">
+            <div style="flex:1">
+              <strong><a href="/restaurants/<%= visit.restaurant._id %>" style="color:var(--accent)"><%= visit.restaurant.name %></a></strong>
+              <div class="muted" style="margin-top:4px">
+                🕐 <%= new Date(visit.visitedAt).toLocaleDateString() %>
+                <% if(visit.rating) { %>
+                  &nbsp; • &nbsp; ⭐ <%= visit.rating %>
+                <% } %>
+              </div>
+              <% if(visit.comment) { %>
+                <div style="margin-top:8px;padding:8px;background:var(--bg);border-radius:6px;border-left:3px solid var(--accent)">
+                  <em><%= visit.comment %></em>
+                </div>
+              <% } %>
+            </div>
+          </div>
+        </li>
+      <% }) %>
+    </ul>
+  <% } %>
+</div>
+
+<!-- Restaurants to Book -->
+<div class="box">
+  <h3 style="margin-bottom:20px">🍽️ Popular Restaurants</h3>
+  <% if (!restaurants || restaurants.length === 0) { %>
+    <div class="empty-state">
+      <p>No restaurants available yet.</p>
+      <p class="muted"><a href="/restaurants/new" style="color:var(--accent)">Create a restaurant</a> to get started.</p>
+    </div>
+  <% } else { %>
+    <div class="cards">
+      <% restaurants.forEach(r => { %>
+        <div class="card">
+          <img src="<%= r.image || '/images/placeholder.png' %>" alt="<%= r.name %>" />
+          <div class="card-content">
+            <h4><a href="/restaurants/<%= r._id %>"><%= r.name %></a></h4>
+            <p class="muted"><%= r.cuisine %></p>
+            <p class="rating">⭐ <%= r.avgRating || 'N/A' %></p>
+            <div class="actions" style="margin-top:auto">
+              <button type="button" class="book-toggle-btn small" data-id="<%= r._id %>" style="flex:1">Book</button>
+              <button type="button" class="review-toggle-btn small" data-id="<%= r._id %>" style="flex:1">Review</button>
+            </div>
+          </div>
+          
+          <!-- Book Form -->
+          <form id="book-form-<%= r._id %>" class="hidden book-form" method="post" action="/reservations">
+            <input type="hidden" name="restaurantId" value="<%= r._id %>" />
+            <label>Your Name</label>
+            <input name="name" required />
+            <label>Phone</label>
+            <input name="phone" />
+            <label>Date &amp; Time</label>
+            <input type="datetime-local" name="dateTime" required />
+            <label>Guests</label>
+            <input type="number" min="1" name="guests" value="2" />
+            <button type="submit" style="margin-top:8px">Complete Booking</button>
+          </form>
+
+          <!-- Review Form -->
+          <form id="review-form-<%= r._id %>" class="hidden book-form" method="post" action="/restaurants/<%= r._id %>/rate">
+            <label>Your Name (optional)</label>
+            <input name="username" placeholder="Anonymous" />
+            <label>Rating</label>
+            <select name="score" required>
+              <% for(let i=5;i>=1;i--){ %>
+                <option value="<%=i%>">⭐ <%= i %> Star<% if(i !== 1) { %>s<% } %></option>
+              <% } %>
+            </select>
+            <label>Comment</label>
+            <textarea name="comment" placeholder="Share your experience..."></textarea>
+            <button type="submit" style="margin-top:8px">Submit Review</button>
+          </form>
+        </div>
+      <% }) %>
+    </div>
+  <% } %>
+</div>
+
+<!-- Leaflet JS & Map Script -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="/js/dashboard.js"></script>
+
+<script>
+  // Initialize map with all restaurants (visited and unvisited)
+  document.addEventListener('DOMContentLoaded', () => {
+    const mapEl = document.getElementById('map');
+    if (!mapEl) return;
+    
+    const map = L.map('map').setView([20, 0], 2);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '© OpenStreetMap contributors',
+      maxZoom: 19
+    }).addTo(map);
+
+    const allRestaurants = <%- JSON.stringify(mapRestaurants) %>;
+    const visits = <%- JSON.stringify(recentVisits) %>;
+    const bounds = [];
+
+    // Create custom icons for restaurants
+    const createIcon = (color, symbol) => {
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `<div style="background-color:${color};color:white;width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:16px;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,0.2)">${symbol}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+        popupAnchor: [0, -16]
+      });
+    };
+
+    // Create a map of visited restaurant IDs for quick lookup
+    const visitedIds = new Set(visits.map(v => v.restaurant._id));
+
+    // Add all restaurants to map
+    allRestaurants.forEach(restaurant => {
+      if (restaurant.latitude && restaurant.longitude) {
+        const lat = restaurant.latitude;
+        const lng = restaurant.longitude;
+        bounds.push([lat, lng]);
+        
+        const isVisited = visitedIds.has(restaurant._id);
+        
+        // Find visit data if restaurant is visited
+        const visitData = visits.find(v => v.restaurant._id === restaurant._id);
+        const ratingStars = visitData && visitData.rating ? '⭐ '.repeat(visitData.rating) : 'Not visited yet';
+        
+        const statusText = isVisited ? '✓ Visited' : '○ To Visit';
+        const popup = `<strong>${restaurant.name}</strong><br/><em>${restaurant.city}</em><br/>${ratingStars}<br/><small>${statusText}</small>`;
+        
+        // Green with checkmark for visited, gray with circle for unvisited
+        const color = isVisited ? '#10b981' : '#9ca3af';
+        const symbol = isVisited ? '✓' : '○';
+        
+        const marker = L.marker([lat, lng], { icon: createIcon(color, symbol) }).addTo(map);
+        marker.bindPopup(popup);
+      }
+    });
+
+    // Fit map to bounds if there are restaurants
+    if (bounds.length > 0) {
+      map.fitBounds(bounds, { padding: [50, 50] });
+    }
+  });
+</script>
+
+<%- include('partials/footer') %>

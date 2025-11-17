@@ -1,0 +1,53 @@
+<%- include('../partials/header') %>
+  <section class="box small">
+    <h2>Edit Restaurant</h2>
+    <form action="/restaurants/<%= restaurant._id %>?_method=PUT" method="post">
+      <label>Name</label>
+      <input name="name" value="<%= restaurant.name %>" required />
+      <label>Address</label>
+      <input name="address" value="<%= restaurant.address %>" />
+      <label>City</label>
+      <select name="city" id="citySelect" required>
+        <option value="">Select a city...</option>
+        <option value="New York" <%= restaurant.city === 'New York' ? 'selected' : '' %>>New York</option>
+        <option value="London" <%= restaurant.city === 'London' ? 'selected' : '' %>>London</option>
+        <option value="Paris" <%= restaurant.city === 'Paris' ? 'selected' : '' %>>Paris</option>
+        <option value="Tokyo" <%= restaurant.city === 'Tokyo' ? 'selected' : '' %>>Tokyo</option>
+        <option value="Sydney" <%= restaurant.city === 'Sydney' ? 'selected' : '' %>>Sydney</option>
+      </select>
+      <label>Latitude (auto-filled from city)</label>
+      <input name="latitude" id="latInput" type="number" step="0.0001" value="<%= restaurant.latitude || '' %>" placeholder="40.7128" />
+      <label>Longitude (auto-filled from city)</label>
+      <input name="longitude" id="lngInput" type="number" step="0.0001" value="<%= restaurant.longitude || '' %>" placeholder="-74.0060" />
+      <label>Cuisine</label>
+      <input name="cuisine" value="<%= restaurant.cuisine %>" />
+      <label>Image URL</label>
+      <input name="image" value="<%= restaurant.image %>" placeholder="https://.../photo.jpg" />
+      <label>Description</label>
+      <textarea name="description"><%= restaurant.description %></textarea>
+      <button>Save</button>
+    </form>
+  </section>
+
+  <script>
+    const cityCoordinates = {
+      'New York': { lat: 40.7128, lng: -74.0060 },
+      'London': { lat: 51.5074, lng: -0.1278 },
+      'Paris': { lat: 48.8566, lng: 2.3522 },
+      'Tokyo': { lat: 35.6762, lng: 139.6503 },
+      'Sydney': { lat: -33.8688, lng: 151.2093 }
+    };
+
+    document.getElementById('citySelect').addEventListener('change', (e) => {
+      const selectedCity = e.target.value;
+      const coords = cityCoordinates[selectedCity];
+      if (coords) {
+        // Add slight variation to coordinates for multiple restaurants in same city
+        const latVariation = (Math.random() - 0.5) * 0.05;
+        const lngVariation = (Math.random() - 0.5) * 0.05;
+        document.getElementById('latInput').value = (coords.lat + latVariation).toFixed(4);
+        document.getElementById('lngInput').value = (coords.lng + lngVariation).toFixed(4);
+      }
+    });
+  </script>
+<%- include('../partials/footer') %>
